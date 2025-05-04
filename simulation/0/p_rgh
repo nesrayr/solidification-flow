@@ -1,35 +1,54 @@
 /*--------------------------------*- C++ -*----------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  dev
-     \\/     M anipulation  |
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2412                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
     version     2.0;
-    format      ascii;
+    format      binary;
+    arch        "LSB;label=32;scalar=64";
     class       volScalarField;
+    location    "0";
     object      p_rgh;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions          [1 -1 -2 0 0 0 0];
+dimensions      [1 -1 -2 0 0 0 0];
 
-internalField       uniform 0;
+internalField   nonuniform List<scalar> 0;
 
 boundaryField
 {
-    "(bottom|top|right)"
+    bottom
     {
         type            fixedFluxPressure;
-        value           $internalField;
+        gradient        nonuniform List<scalar> 0;
+        value           nonuniform List<scalar> 0;
     }
-    
-    left     
+    top
+    {
+        type            fixedFluxPressure;
+        gradient        nonuniform List<scalar> 0;
+        value           nonuniform List<scalar> 0;
+    }
+    left
     {
         type            symmetryPlane;
     }
+    right
+    {
+        type            fixedFluxPressure;
+        gradient        nonuniform List<scalar> 0;
+        value           nonuniform List<scalar> 0;
+    }
+    frontAndBack
+    {
+        type            empty;
+    }
 }
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// ************************************************************************* //

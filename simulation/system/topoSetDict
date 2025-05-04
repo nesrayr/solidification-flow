@@ -1,0 +1,50 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2412                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      topoSetDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+actions
+(
+    {
+        name    statorCells;     // любое ваше имя набора
+        type    cellSet;
+        action  new;
+
+        source  surfaceToCell;
+        sourceInfo
+        {
+            // Файл STL из папки constant/triSurface
+            file           "constant/triSurface/EvinrudeStatorCoverFittingWasher.stl";
+
+            // Имя поверхности, как в snappyHexMeshDict.geometry { name stator; }
+            surface        stator;
+
+            // === ВАЖНО: точка, гарантированно лежащая за пределами STL,
+            // но внутри фонового меша.
+            // Откройте STL в ParaView/MeshLab → Tools → Probe Location,
+            // выберите точку, которая НЕ попадает внутрь вашей детали.
+            // Например, если ваша деталь по Y занимает [0.01,0.05], можно взять:
+            outsidePoints ((0.025 0.055 0.0005));
+
+            // берем все ячейки внутри замкнутой поверхности
+            includeInside  true;
+            // если нужны ячейки, пересечённые поверхностью, можно добавить:
+            // includeCut   true;
+            includeCut     false;
+            // не включаем ячейки полностью снаружи
+            includeOutside false;
+        }
+    }
+);

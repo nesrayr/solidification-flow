@@ -22,9 +22,9 @@ solid
     rho     8960;
     Cp      385;
     kappa   401;
-    mu      1.8e-3;
-    D       1e-9;
-    DAS     1e-5;
+    mu      0.0018;
+    D       1e-09;
+    DAS     1e-05;
 }
 
 liquid
@@ -32,10 +32,10 @@ liquid
     rho     8020;
     Cp      420;
     kappa   320;
-    mu      4.5e-3;
-    D       2e-9;
+    mu      0.0045;
+    D       2e-09;
 
-    betaT   1.7e-4;
+    betaT   0.00017;
     betaC   0.4;
     TRef    1300;
     CRef    0.02;
