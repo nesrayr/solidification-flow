@@ -1,0 +1,12 @@
+name: solidification-flow
+channels:
+  - conda-forge
+  - ccx2paraview_env
+dependencies:
+  - python=3.10
+  - fenics=2019.1.0
+  - meshio
+  - numpy
+  - calculix
+  - paraview
+  - ccx2paraview

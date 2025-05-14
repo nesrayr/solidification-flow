@@ -128,3 +128,30 @@ mesh.setFluxRequired(p_rgh.name());
 
 #include "createMRF.H"
 #include "createFvOptions.H"
+
+{
+    Info<< "Detected cellZones:" << endl;
+    const cellZoneMesh& cz = mesh.cellZones();
+    const List<word>& zoneNames = cz.cellZoneNames();
+    forAll(zoneNames, zi)
+    {
+        const word& name = zoneNames[zi];
+        label nCells = cz[name].size();
+        Info<< "  - " << name << " (" << nCells << " cells)" << endl;
+    }
+}
+{
+    Info<< "Detected boundary patches:" << endl;
+    const fvPatchList& pList = mesh.boundaryMesh();
+    const List<word>& patchNames = pList.patchNames();
+    forAll(patchNames, pi)
+    {
+        Info<< "  - " << patchNames[pi] << endl;
+    }
+}
+if (mesh.cellZones().found("stator"))
+{
+    labelList const& cells = mesh.cellZones()["stator"];
+    Info<< "Creating mask for zone stator with " << cells.size() << " cells" << endl;
+}
+Info<< "Finished dynamic zone/patch detection\n" << endl;

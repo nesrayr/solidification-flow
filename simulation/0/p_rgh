@@ -18,21 +18,21 @@ FoamFile
 
 dimensions      [1 -1 -2 0 0 0 0];
 
-internalField   nonuniform List<scalar> 0;
+internalField   uniform 0;
 
 boundaryField
 {
     bottom
     {
         type            fixedFluxPressure;
-        gradient        nonuniform List<scalar> 0;
-        value           nonuniform List<scalar> 0;
+        gradient        uniform 0;
+        value           uniform 0;
     }
     top
     {
         type            fixedFluxPressure;
-        gradient        nonuniform List<scalar> 0;
-        value           nonuniform List<scalar> 0;
+        gradient        uniform 0;
+        value           uniform 0;
     }
     left
     {
@@ -41,8 +41,8 @@ boundaryField
     right
     {
         type            fixedFluxPressure;
-        gradient        nonuniform List<scalar> 0;
-        value           nonuniform List<scalar> 0;
+        gradient        uniform 0;
+        value           uniform 0;
     }
     frontAndBack
     {

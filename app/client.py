@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 import signal
+from pathlib import Path
 
 # -----------------------
 # Функции обновления словарей OpenFOAM
@@ -42,27 +43,21 @@ def update_section_in_transport(text, section_name, updates):
 # Обёртка запуска команд в Docker
 # -----------------------
 
-def run_in_docker(command, mount_dir, timeout=None):
+def run_in_docker(command, mount_dir):
     """
-    Выполняет команду внутри контейнера openfoam-docker.
+    Выполняет команду внутри контейнера openfoam-docker
     """
     docker_cmd = ["openfoam-docker", f"-dir={mount_dir}", "-c", command]
     print(f"[INFO] Запуск: {command}")
     proc = subprocess.Popen(docker_cmd, start_new_session=True)
-    timed_out = False
-    try:
-        ret = proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        print("[WARNING] Таймаут, посылаем SIGINT...")
-        os.killpg(os.getpgid(proc.pid), signal.SIGINT)
-        proc.wait()
-        timed_out = True
+    ret = proc.wait()
+    return ret
 
 import os
 import re
 import meshio
 import numpy as np
-from dolfin import Mesh, XDMFFile, VectorFunctionSpace, FunctionSpace, Function, \
+from dolfin import File as DOLFINFile, Mesh, XDMFFile, VectorFunctionSpace, FunctionSpace, Function, \
                   Constant, TrialFunction, TestFunction, Identity, div, sym, grad, inner, \
                   dot, dx, solve
 
@@ -96,11 +91,9 @@ def prepare_mesh(mesh_source_vtu, mesh_xdmf):
             else:
                 new_cells.append((ctype, data))
 
-        # Собираем новую meshio.Mesh и пишем XDMF
         m_tet = meshio.Mesh(points=m.points, cells=new_cells, point_data=m.point_data)
         meshio.write(mesh_xdmf, m_tet)
 
-    # Читаем получившийся XDMF в DOLFIN
     mesh = Mesh()
     with XDMFFile(mesh_xdmf) as xdmf:
         xdmf.read(mesh)
@@ -116,14 +109,13 @@ def read_scalar_field(field_vtu, field_name, V):
     return f
 
 
-def run_fenics(vtk_dir):
-    # ищем папки simulation_<time>
+def run_fenics(vtk_dir) -> float:
     dirs = [d for d in os.listdir(vtk_dir) if os.path.isdir(os.path.join(vtk_dir, d))]
     pat = re.compile(r"^simulation_(\d+(\.\d+)?)$")
     times = [(float(m.group(1)), d) for d in dirs if (m := pat.match(d))]
     if not times:
         print("[ERROR] Нет папок вида simulation_<time> в", vtk_dir)
-        return
+        return 0
 
     times.sort(key=lambda x: x[0])
     tval, tdir = times[-1]
@@ -171,10 +163,27 @@ def run_fenics(vtk_dir):
     # 5) сохраняем результат
     out_dir = os.path.join(vtk_dir, "..", "FEM_results")
     os.makedirs(out_dir, exist_ok=True)
-    xdmf_out = os.path.join(out_dir, f"Uel_{tval}.xdmf")
+
+    step_i = int(tval)
+    xdmf_out = os.path.join(out_dir, f"Uel_{step_i}.xdmf")
+
     with XDMFFile(xdmf_out) as xf:
         xf.write(Uel, tval)
-    print(f"[FEniCS] Результат сохранён: {xdmf_out}")
+
+    vtu_out = os.path.join(out_dir, f"Uel_{step_i}.vtu")
+
+    coords = mesh.coordinates()
+    cells  = mesh.cells()
+
+    u_np = Uel.vector().get_local().reshape((-1, mesh.geometry().dim()))
+
+    meshio.write(vtu_out, meshio.Mesh(
+        points=coords,
+        cells=[("tetra", cells)],
+        point_data={"Uel": u_np}
+    ))
+    print(f"[FEniCS] Результаты сохранены: {xdmf_out} и {vtu_out}")
+    return tval
 
 
 # -----------------------
@@ -185,16 +194,14 @@ def main():
     parser = argparse.ArgumentParser(description="Клиент OpenFOAM + FEniCS")
     parser.add_argument("--json", required=True, help="Путь к JSON с параметрами")
     parser.add_argument("--path", default="openfoam/solidification-flow/simulation/constant")
-    parser.add_argument("--timeout", type=int, default=120)
+    parser.add_argument("--cross",  action="store_true", help="Включить cross-верификацию")
     args = parser.parse_args()
 
-    # Загрузка JSON
     if not os.path.isfile(args.json):
         print(f"[ERROR] {args.json} не найден")
         sys.exit(1)
     params = json.load(open(args.json))
 
-    # Обновление thermoProperties
     thermo_path = os.path.join(args.path, "thermoProperties")
     if os.path.isfile(thermo_path) and "thermoProperties" in params:
         text = open(thermo_path).read()
@@ -202,7 +209,6 @@ def main():
         open(thermo_path, "w").write(text)
         print("[INFO] thermoProperties обновлён")
 
-    # Обновление transportProperties
     transport_path = os.path.join(args.path, "transportProperties")
     if os.path.isfile(transport_path) and "transportProperties" in params:
         text = open(transport_path).read()
@@ -212,19 +218,45 @@ def main():
         open(transport_path, "w").write(text)
         print("[INFO] transportProperties обновлён")
 
-    # # Определяем корень проекта
     project_root = os.path.abspath(os.path.join(args.path, "..", ".."))
     print(f"[INFO] Корень проекта: {project_root}")
 
     # Сборка и запуск OpenFOAM
     run_in_docker("cd solidificationFoam/solvers && ./Allwmake", project_root)
-    run_in_docker("cd simulation && ./Allclean && ./Allrun", project_root, timeout=args.timeout)
+    run_in_docker("cd simulation && ./Allclean && ./Allrun", project_root)
     run_in_docker("cd simulation && reconstructPar && foamToVTK", project_root)
 
     # FEniCS
     vtk_dir = os.path.join(project_root, "simulation", "VTK")
     print("[INFO] Запуск FEniCS решения...")
-    run_fenics(vtk_dir)
+    last_step = run_fenics(vtk_dir)
+
+    # Кросс-верификация
+    if args.cross:
+      project_root = Path(args.path).parent.parent
+      vtk_dir      = project_root / "simulation" / "VTK"
+      mesh_xdmf = vtk_dir / "mesh_tet.xdmf"
+      temp_vtu  = vtk_dir / f"simulation_{int(last_step)}" / "internal.vtu"
+      inp_file  = project_root / "simulation" / "crosscheck.inp"
+
+      subprocess.run([
+          "python", "export_to_calculix.py",
+          "--mesh", str(mesh_xdmf),
+          "--temps", str(temp_vtu),
+          "--out",   str(inp_file)
+      ], check=True)
+
+      # Запускаем CalculiX и конвертацию из .frd в .vtk внутри контейнера
+      run_in_docker("cd simulation && ccx crosscheck", project_root)
+      run_in_docker("cd simulation && ccx2paraview crosscheck.frd vtk", project_root)
+      # Сравниваем полученные результаты
+      vtk_file = project_root / "simulation" / "crosscheck.vtk"
+      subprocess.run([
+          "python", "compare_calculix.py",
+          "--fenics", str(project_root / "simulation" / "FEM_results" / f"Uel_{int(last_step)}.vtu"),
+          "--ccx",    str(vtk_file)
+      ], check=True)
+      sys.exit(0)
 
 if __name__ == "__main__":
     main()
