@@ -20,7 +20,6 @@ COPY simulation /home/openfoam/solidification-flow/simulation
 RUN mkdir -p /home/openfoam/OpenFOAM/user-v2412/platforms/linuxARM64GccDPInt32Opt/bin && \
     mkdir -p /home/openfoam/OpenFOAM/user-v2412/platforms/linuxARM64GccDPInt32Opt/lib
 
-# Set environment variables for OpenFOAM user directories
 ENV FOAM_USER_DIR=/home/openfoam/OpenFOAM/user-v2412
 ENV FOAM_USER_APPBIN=$FOAM_USER_DIR/platforms/linuxARM64GccDPInt32Opt/bin
 ENV FOAM_USER_LIBBIN=$FOAM_USER_DIR/platforms/linuxARM64GccDPInt32Opt/lib

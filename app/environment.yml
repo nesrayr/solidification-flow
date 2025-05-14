@@ -1,0 +1,8 @@
+name: solidification-flow
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - fenics=2019.1.0
+  - meshio
+  - numpy

@@ -42,21 +42,17 @@ def update_section_in_transport(text, section_name, updates):
 # Обёртка запуска команд в Docker
 # -----------------------
 
-def run_in_docker(command, mount_dir, timeout=None):
+def run_in_docker(command, mount_dir):
     """
     Выполняет команду внутри контейнера openfoam-docker.
+    Число шагов для моделирования
     """
     docker_cmd = ["openfoam-docker", f"-dir={mount_dir}", "-c", command]
     print(f"[INFO] Запуск: {command}")
     proc = subprocess.Popen(docker_cmd, start_new_session=True)
-    timed_out = False
-    try:
-        ret = proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        print("[WARNING] Таймаут, посылаем SIGINT...")
-        os.killpg(os.getpgid(proc.pid), signal.SIGINT)
-        proc.wait()
-        timed_out = True
+    ret = proc.wait()
+    return ret
+
 
 import os
 import re
@@ -218,7 +214,7 @@ def main():
 
     # Сборка и запуск OpenFOAM
     run_in_docker("cd solidificationFoam/solvers && ./Allwmake", project_root)
-    run_in_docker("cd simulation && ./Allclean && ./Allrun", project_root, timeout=args.timeout)
+    run_in_docker("cd simulation && ./Allclean && ./Allrun", project_root)
     run_in_docker("cd simulation && reconstructPar && foamToVTK", project_root)
 
     # FEniCS
