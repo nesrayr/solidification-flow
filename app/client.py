@@ -129,19 +129,15 @@ def run_fenics(vtk_dir) -> float:
     # выбираем откуда брать сетку
     mesh_source = mesh_vtu if os.path.exists(mesh_vtu) else internal_vtu
 
-    # 1) подготовка сетки (hexa→tetra) и чтение
     mesh = prepare_mesh(mesh_source, mesh_xdmf)
 
-    # 2) FunctionSpaces
     dim = mesh.geometry().dim()
     V   = VectorFunctionSpace(mesh, "Lagrange", 1)
     S   = FunctionSpace(mesh, "Lagrange", 1)
 
-    # 3) читаем поля
     T      = read_scalar_field(internal_vtu, "T",           S)
     alpha1 = read_scalar_field(internal_vtu, "alpha.solid", S)
 
-    # 4) формируем нагрузку и решаем задачу упругости
     alpha_T = Constant(1e-5)
     T_ref   = Constant(300.0)
     I       = Identity(dim)
@@ -160,7 +156,6 @@ def run_fenics(vtk_dir) -> float:
     Uel = Function(V)
     solve(a == L, Uel)
 
-    # 5) сохраняем результат
     out_dir = os.path.join(vtk_dir, "..", "FEM_results")
     os.makedirs(out_dir, exist_ok=True)
 
